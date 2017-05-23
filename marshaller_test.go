@@ -14,7 +14,7 @@ func TestMarshallerConstants(t *testing.T) {
 	assert.Equal(t, 1320, EVENT_EOE)
 }
 
-func TestAuditMarshaller_Consume(t *testing.T) {
+func TestAuditMarshallerConsume(t *testing.T) {
 	w := &bytes.Buffer{}
 	m := NewAuditMarshaller(NewAuditWriter(w, 1), uint16(1100), uint16(1399), false, false, 0, []AuditFilter{})
 
@@ -119,7 +119,7 @@ func TestAuditMarshaller_Consume(t *testing.T) {
 	assert.Equal(t, 0, len(m.msgs))
 }
 
-func TestAuditMarshaller_completeMessage(t *testing.T) {
+func TestAuditMarshallerCompleteMessage(t *testing.T) {
 	//TODO: cant test because completeMessage calls exit
 	t.Skip()
 	return

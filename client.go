@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 // Endianness is an alias for what we assume is the current machine endianness
@@ -42,10 +45,10 @@ type NetlinkClient struct {
 }
 
 // NewNetlinkClient creates a new NetLinkClient and optionally tries to modify the netlink recv buffer
-func NewNetlinkClient(recvSize int) *NetlinkClient {
+func NewNetlinkClient(recvSize int) (*NetlinkClient, error) {
 	fd, err := syscall.Socket(syscall.AF_NETLINK, syscall.SOCK_RAW, syscall.NETLINK_AUDIT)
 	if err != nil {
-		el.Fatalln("Could not create a socket:", err)
+		return nil, fmt.Errorf("could not create a socket: %v", err)
 	}
 
 	n := &NetlinkClient{
@@ -56,19 +59,19 @@ func NewNetlinkClient(recvSize int) *NetlinkClient {
 
 	if err = syscall.Bind(fd, n.address); err != nil {
 		syscall.Close(fd)
-		el.Fatalln("Could not bind to netlink socket:", err)
+		return nil, fmt.Errorf("could not bind to netlink socket: %v", err)
 	}
 
 	// Set the buffer size if we were asked
 	if recvSize > 0 {
 		if err = syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_RCVBUF, recvSize); err != nil {
-			el.Println("Failed to set receive buffer size")
+			return nil, fmt.Errorf("failed to set receive buffer size")
 		}
 	}
 
 	// Print the current receive buffer size
 	if v, err := syscall.GetsockoptInt(n.fd, syscall.SOL_SOCKET, syscall.SO_RCVBUF); err == nil {
-		l.Println("Socket receive buffer size:", v)
+		logrus.Infof("socket receive buffer size: %d", v)
 	}
 
 	go func() {
@@ -78,7 +81,7 @@ func NewNetlinkClient(recvSize int) *NetlinkClient {
 		}
 	}()
 
-	return n
+	return n, nil
 }
 
 // Send will send a packet and payload to the netlink socket without waiting for a response
@@ -116,7 +119,7 @@ func (n *NetlinkClient) Receive() (*syscall.NetlinkMessage, error) {
 	}
 
 	if nlen < 1 {
-		return nil, errors.New("Got a 0 length packet")
+		return nil, errors.New("got a 0 length packet")
 	}
 
 	msg := &syscall.NetlinkMessage{
@@ -150,6 +153,6 @@ func (n *NetlinkClient) KeepConnection() {
 
 	err := n.Send(packet, payload)
 	if err != nil {
-		el.Println("Error occurred while trying to keep the connection:", err)
+		logrus.WithError(err).Error("error occurred while trying to keep the connection")
 	}
 }

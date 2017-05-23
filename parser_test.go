@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/stretchr/testify/assert"
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAuditConstants(t *testing.T) {
@@ -33,7 +34,7 @@ func TestNewAuditMessage(t *testing.T) {
 	assert.Equal(t, "hi there", am.Data)
 }
 
-func TestAuditMessageGroup_AddMessage(t *testing.T) {
+func TestAuditMessageGroupAddMessage(t *testing.T) {
 	uidMap = make(map[string]string, 0)
 	uidMap["0"] = "hi"
 	uidMap["1"] = "nope"
@@ -112,7 +113,7 @@ func Test_getUsername(t *testing.T) {
 	assert.Equal(t, "UNKNOWN_USER", val)
 }
 
-func TestAuditMessageGroup_mapUids(t *testing.T) {
+func TestAuditMessageGroupMapUids(t *testing.T) {
 	uidMap = make(map[string]string, 0)
 	uidMap["0"] = "hi"
 	uidMap["1"] = "there"
@@ -140,7 +141,7 @@ func TestAuditMessageGroup_mapUids(t *testing.T) {
 	assert.Equal(t, "derp", amg.UidMap["99999"])
 }
 
-func Benchmark_getUsername(b *testing.B) {
+func BenchmarkGetUsername(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_ = getUsername("0")
 	}

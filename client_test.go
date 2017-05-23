@@ -3,21 +3,23 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/stretchr/testify/assert"
+	"log"
 	"os"
+	"strings"
 	"syscall"
 	"testing"
+
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestNetlinkClient_KeepConnection(t *testing.T) {
+func TestNetlinkClientKeepConnection(t *testing.T) {
 	n := makeNelinkClient(t)
 	defer syscall.Close(n.fd)
 
 	n.KeepConnection()
 	msg, err := n.Receive()
-	if err != nil {
-		t.Fatal("Did not expect an error", err)
-	}
+	assert.NoError(t, err)
 
 	expectedData := []byte{4, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 	binary.LittleEndian.PutUint32(expectedData[12:16], uint32(os.Getpid()))
@@ -29,15 +31,14 @@ func TestNetlinkClient_KeepConnection(t *testing.T) {
 	assert.EqualValues(t, msg.Data[:40], expectedData, "data was wrong")
 
 	// Make sure we get errors printed
-	lb, elb := hookLogger()
+	lb := hookLogger()
 	defer resetLogger()
 	syscall.Close(n.fd)
 	n.KeepConnection()
-	assert.Equal(t, "", lb.String(), "Got some log lines we did not expect")
-	assert.Equal(t, "Error occurred while trying to keep the connection: bad file descriptor\n", elb.String(), "Figured we would have an error")
+	assert.True(t, strings.Contains(lb.String(), "error occurred while trying to keep the connection"), "Figured we would have an error")
 }
 
-func TestNetlinkClient_SendReceive(t *testing.T) {
+func TestNetlinkClientSendReceive(t *testing.T) {
 	var err error
 	var msg *syscall.NetlinkMessage
 
@@ -74,7 +75,7 @@ func TestNetlinkClient_SendReceive(t *testing.T) {
 	// Make sure 0 length packets result in an error
 	syscall.Sendto(n.fd, []byte{}, 0, n.address)
 	_, err = n.Receive()
-	assert.Equal(t, "Got a 0 length packet", err.Error(), "Error was incorrect")
+	assert.Equal(t, "got a 0 length packet", err.Error(), "Error was incorrect")
 
 	// Make sure we get errors from sendto back
 	syscall.Close(n.fd)
@@ -88,21 +89,21 @@ func TestNetlinkClient_SendReceive(t *testing.T) {
 }
 
 func TestNewNetlinkClient(t *testing.T) {
-	lb, elb := hookLogger()
+	lb := hookLogger()
 	defer resetLogger()
 
-	n := NewNetlinkClient(1024)
+	n, err := NewNetlinkClient(1024)
+	assert.NoError(t, err)
 
 	assert.True(t, (n.fd > 0), "No file descriptor")
 	assert.True(t, (n.address != nil), "Address was nil")
 	assert.Equal(t, uint32(0), n.seq, "Seq should start at 0")
 	assert.True(t, MAX_AUDIT_MESSAGE_LENGTH >= len(n.buf), "Client buffer is too small")
 
-	assert.Equal(t, "Socket receive buffer size: ", lb.String()[:28], "Expected some nice log lines")
-	assert.Equal(t, "", elb.String(), "Did not expect any error messages")
+	assert.True(t, strings.Contains(lb.String(), "socket receive buffer size"), "Expected some nice log lines")
 }
 
-// Helper to make a client listening on a unix socket
+// Helper to make a client listening on a unix secket
 func makeNelinkClient(t *testing.T) *NetlinkClient {
 	os.Remove("go-audit.test.sock")
 	fd, err := syscall.Socket(syscall.AF_UNIX, syscall.SOCK_RAW, 0)
@@ -127,30 +128,22 @@ func makeNelinkClient(t *testing.T) *NetlinkClient {
 // Helper to send and then receive a message with the netlink client
 func sendReceive(t *testing.T, n *NetlinkClient, packet *NetlinkPacket, payload *AuditStatusPayload) *syscall.NetlinkMessage {
 	err := n.Send(packet, payload)
-	if err != nil {
-		t.Fatal("Failed to send:", err)
-	}
+	assert.NoError(t, err)
 
 	msg, err := n.Receive()
-	if err != nil {
-		t.Fatal("Failed to receive:", err)
-	}
+	assert.NoError(t, err)
 
 	return msg
 }
 
 // Resets global loggers
 func resetLogger() {
-	l.SetOutput(os.Stdout)
-	el.SetOutput(os.Stderr)
+	log.SetOutput(os.Stderr)
 }
 
 // Hooks the global loggers writers so you can assert their contents
-func hookLogger() (lb *bytes.Buffer, elb *bytes.Buffer) {
-	lb = &bytes.Buffer{}
-	l.SetOutput(lb)
-
-	elb = &bytes.Buffer{}
-	el.SetOutput(elb)
-	return
+func hookLogger() *bytes.Buffer {
+	lb := &bytes.Buffer{}
+	logrus.SetOutput(lb)
+	return lb
 }

@@ -1,0 +1,8 @@
+FROM golang:1.8
+
+RUN echo 'Acquire::http::Proxy "http://clientproxy.corproot.net:8079";' >> /etc/apt/apt.conf
+RUN echo 'deb http://ftp.debian.org/debian jessie-backports main' >> /etc/apt/sources.list
+RUN dpkg --add-architecture i386
+
+RUN apt-get update
+RUN apt-get -t jessie-backports install -y librdkafka1 librdkafka-dev libsasl2-dev

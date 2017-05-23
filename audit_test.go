@@ -13,42 +13,39 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_loadConfig(t *testing.T) {
+func TestLoadConfig(t *testing.T) {
 	file := createTempFile(t, "defaultValues.test.yaml", "")
 	defer os.Remove(file)
 
 	// defaults
 	config, err := loadConfig(file)
-	assert.Equal(t, 1300, config.GetInt("events.min"), "events.min should default to 1300")
-	assert.Equal(t, 1399, config.GetInt("events.max"), "events.max should default to 1399")
-	assert.Equal(t, true, config.GetBool("message_tracking.enabled"), "message_tracking.enabled should default to true")
-	assert.Equal(t, false, config.GetBool("message_tracking.log_out_of_order"), "message_tracking.log_out_of_order should default to false")
-	assert.Equal(t, 500, config.GetInt("message_tracking.max_out_of_order"), "message_tracking.max_out_of_order should default to 500")
-	assert.Equal(t, false, config.GetBool("output.syslog.enabled"), "output.syslog.enabled should default to false")
-	assert.Equal(t, 132, config.GetInt("output.syslog.priority"), "output.syslog.priority should default to 132")
-	assert.Equal(t, "go-audit", config.GetString("output.syslog.tag"), "output.syslog.tag should default to go-audit")
-	assert.Equal(t, 3, config.GetInt("output.syslog.attempts"), "output.syslog.attempts should default to 3")
-	assert.Equal(t, 0, config.GetInt("log.flags"), "log.flags should default to 0")
-	assert.Equal(t, 0, l.Flags(), "stdout log flags was wrong")
-	assert.Equal(t, 0, el.Flags(), "stderr log flags was wrong")
+	assert.Equal(t, 1300, config.Events.Min, "events.min should default to 1300")
+	assert.Equal(t, 1399, config.Events.Max, "events.max should default to 1399")
+	assert.Equal(t, true, config.MessageTracking.Enabled, "message_tracking.enabled should default to true")
+	assert.Equal(t, false, config.MessageTracking.LogOutOfOrder, "message_tracking.log_out_of_order should default to false")
+	assert.Equal(t, 500, config.MessageTracking.MaxOutOfOrder, "message_tracking.max_out_of_order should default to 500")
+	assert.Equal(t, false, config.Output.Syslog.Enabled, "output.syslog.enabled should default to false")
+	assert.Equal(t, 132, config.Output.Syslog.Priority, "output.syslog.priority should default to 132")
+	assert.Equal(t, "go-audit", config.Output.Syslog.Tag, "output.syslog.tag should default to go-audit")
+	assert.Equal(t, 3, config.Output.Syslog.Attempts, "output.syslog.attempts should default to 3")
+	assert.Equal(t, "warn", config.Log.Level, "log.flags should default to 0")
 	assert.Nil(t, err)
 
 	// parse error
 	file = createTempFile(t, "defaultValues.test.yaml", "this is bad")
 	config, err = loadConfig(file)
-	assert.EqualError(t, err, "While parsing config: yaml: unmarshal errors:\n  line 1: cannot unmarshal !!str `this is...` into map[string]interface {}")
+	assert.EqualError(t, err, "yaml: unmarshal errors:\n  line 1: cannot unmarshal !!str `this is...` into main.Config")
 	assert.Nil(t, config)
 }
 
-func Test_setRules(t *testing.T) {
+func TestSetRules(t *testing.T) {
 	defer resetLogger()
 
 	// fail to flush rules
-	config := viper.New()
+	config := &Config{}
 
 	err := setRules(config, func(s string, a ...string) error {
 		if s == "auditctl" && a[0] == "-D" {
@@ -58,27 +55,26 @@ func Test_setRules(t *testing.T) {
 		return nil
 	})
 
-	assert.EqualError(t, err, "Failed to flush existing audit rules. Error: testing")
+	assert.EqualError(t, err, "failed to flush existing audit rules: testing")
 
 	// fail on 0 rules
 	err = setRules(config, func(s string, a ...string) error { return nil })
-	assert.EqualError(t, err, "No audit rules found")
+	assert.EqualError(t, err, "no audit rules found")
 
 	// failure to set rule
 	r := 0
-	config.Set("rules", []string{"-a -1 -2", "", "-a -3 -4"})
+	config.Rules = []string{"-a -1 -2", "", "-a -3 -4"}
 	err = setRules(config, func(s string, a ...string) error {
 		if a[0] != "-D" {
 			return errors.New("testing rule")
 		}
 
 		r++
-
 		return nil
 	})
 
 	assert.Equal(t, 1, r, "Wrong number of rule set attempts")
-	assert.EqualError(t, err, "Failed to add rule #1. Error: testing rule")
+	assert.EqualError(t, err, "failed to add rule #1: testing rule")
 
 	// properly set rules
 	r = 0
@@ -91,7 +87,6 @@ func Test_setRules(t *testing.T) {
 		if (a[1] == "-1" && a[2] == "-2") || (a[1] == "-3" && a[2] == "-4") {
 			r++
 		}
-
 		return nil
 	})
 
@@ -99,38 +94,38 @@ func Test_setRules(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func Test_createFileOutput(t *testing.T) {
+func TestCreateFileOutput(t *testing.T) {
 	// attempts error
-	c := viper.New()
-	c.Set("output.file.attempts", 0)
+	c := &Config{}
+	c.Output.File.Attempts = 0
 	w, err := createFileOutput(c)
-	assert.EqualError(t, err, "Output attempts for file must be at least 1, 0 provided")
+	assert.EqualError(t, err, "output attempts for file must be at least 1, 0 provided")
 	assert.Nil(t, w)
 
 	// failure to create/open file
-	c = viper.New()
-	c.Set("output.file.attempts", 1)
-	c.Set("output.file.path", "/do/not/exist/please")
-	c.Set("output.file.mode", 0644)
+	c = &Config{}
+	c.Output.File.Attempts = 1
+	c.Output.File.Path = "/do/not/exist/please"
+	c.Output.File.Mode = 0644
 	w, err = createFileOutput(c)
-	assert.EqualError(t, err, "Failed to open output file. Error: open /do/not/exist/please: no such file or directory")
+	assert.EqualError(t, err, "failed to open output file: open /do/not/exist/please: no such file or directory")
 	assert.Nil(t, w)
 
 	// chmod error
-	c = viper.New()
-	c.Set("output.file.attempts", 1)
-	c.Set("output.file.path", path.Join(os.TempDir(), "go-audit.test.log"))
+	c = &Config{}
+	c.Output.File.Attempts = 1
+	c.Output.File.Path = path.Join(os.TempDir(), "go-audit.test.log")
 	w, err = createFileOutput(c)
-	assert.EqualError(t, err, "Output file mode should be greater than 0000")
+	assert.EqualError(t, err, "output file mode should be greater than 0000")
 	assert.Nil(t, w)
 
 	// uid error
-	c = viper.New()
-	c.Set("output.file.attempts", 1)
-	c.Set("output.file.path", path.Join(os.TempDir(), "go-audit.test.log"))
-	c.Set("output.file.mode", 0644)
+	c = &Config{}
+	c.Output.File.Attempts = 1
+	c.Output.File.Path = path.Join(os.TempDir(), "go-audit.test.log")
+	c.Output.File.Mode = 0644
 	w, err = createFileOutput(c)
-	assert.EqualError(t, err, "Could not find uid for user . Error: user: unknown user ")
+	assert.EqualError(t, err, "could not find uid for user : user: unknown user ")
 	assert.Nil(t, w)
 
 	uid := os.Getuid()
@@ -144,53 +139,53 @@ func Test_createFileOutput(t *testing.T) {
 	}
 
 	// gid error
-	c = viper.New()
-	c.Set("output.file.attempts", 1)
-	c.Set("output.file.path", path.Join(os.TempDir(), "go-audit.test.log"))
-	c.Set("output.file.mode", 0644)
-	c.Set("output.file.user", u.Username)
+	c = &Config{}
+	c.Output.File.Attempts = 1
+	c.Output.File.Path = path.Join(os.TempDir(), "go-audit.test.log")
+	c.Output.File.Mode = 0644
+	c.Output.File.User = u.Username
 	w, err = createFileOutput(c)
-	assert.EqualError(t, err, "Could not find gid for group . Error: group: unknown group ")
+	assert.EqualError(t, err, "could not find gid for group : group: unknown group ")
 	assert.Nil(t, w)
 
 	// chown error
-	c = viper.New()
-	c.Set("output.file.attempts", 1)
-	c.Set("output.file.path", path.Join(os.TempDir(), "go-audit.test.log"))
-	c.Set("output.file.mode", 0644)
-	c.Set("output.file.user", "root")
-	c.Set("output.file.group", "root")
-	w, err = createFileOutput(c)
-	assert.EqualError(t, err, "Could not chown output file. Error: chown /tmp/go-audit.test.log: operation not permitted")
-	assert.Nil(t, w)
+	// c = &Config{}
+	// c.Output.File.Attempts = 1
+	// c.Output.File.Path = path.Join(os.TempDir(), "go-audit.test.log")
+	// c.Output.File.Mode = 0644
+	// c.Output.File.User = "root"
+	// c.Output.File.Group = "root"
+	// w, err = createFileOutput(c)
+	// assert.EqualError(t, err, "could not chown output file: chown /tmp/go-audit.test.log: operation not permitted")
+	// assert.Nil(t, w)
 
 	// All good
-	c = viper.New()
-	c.Set("output.file.attempts", 1)
-	c.Set("output.file.path", path.Join(os.TempDir(), "go-audit.test.log"))
-	c.Set("output.file.mode", 0644)
-	c.Set("output.file.user", u.Username)
-	c.Set("output.file.group", g.Name)
+	c = &Config{}
+	c.Output.File.Attempts = 1
+	c.Output.File.Path = path.Join(os.TempDir(), "go-audit.test.log")
+	c.Output.File.Mode = 0644
+	c.Output.File.User = u.Username
+	c.Output.File.Group = g.Name
 	w, err = createFileOutput(c)
 	assert.Nil(t, err)
 	assert.NotNil(t, w)
 	assert.IsType(t, &os.File{}, w.w)
 }
 
-func Test_createSyslogOutput(t *testing.T) {
+func TestCreateSyslogOutput(t *testing.T) {
 	// attempts error
-	c := viper.New()
-	c.Set("output.syslog.attempts", 0)
+	c := &Config{}
+	c.Output.Syslog.Attempts = 0
 	w, err := createSyslogOutput(c)
-	assert.EqualError(t, err, "Output attempts for syslog must be at least 1, 0 provided")
+	assert.EqualError(t, err, "output attempts for syslog must be at least 1, 0 provided")
 	assert.Nil(t, w)
 
 	// dial error
-	c = viper.New()
-	c.Set("output.syslog.attempts", 1)
-	c.Set("output.syslog.priority", -1)
+	c = &Config{}
+	c.Output.Syslog.Attempts = 1
+	c.Output.Syslog.Priority = -1
 	w, err = createSyslogOutput(c)
-	assert.EqualError(t, err, "Failed to open syslog writer. Error: log/syslog: invalid priority")
+	assert.EqualError(t, err, "failed to open syslog writer: log/syslog: invalid priority")
 	assert.Nil(t, w)
 
 	// All good
@@ -201,38 +196,38 @@ func Test_createSyslogOutput(t *testing.T) {
 
 	defer l.Close()
 
-	c = viper.New()
-	c.Set("output.syslog.attempts", 1)
-	c.Set("output.syslog.network", "tcp")
-	c.Set("output.syslog.address", l.Addr().String())
+	c = &Config{}
+	c.Output.Syslog.Attempts = 1
+	c.Output.Syslog.Network = "tcp"
+	c.Output.Syslog.Address = l.Addr().String()
 	w, err = createSyslogOutput(c)
 	assert.Nil(t, err)
 	assert.NotNil(t, w)
 	assert.IsType(t, &syslog.Writer{}, w.w)
 }
 
-func Test_createStdOutOutput(t *testing.T) {
+func TestCreateStdOutOutput(t *testing.T) {
 	// attempts error
-	c := viper.New()
-	c.Set("output.stdout.attempts", 0)
+	c := &Config{}
+	c.Output.Stdout.Attempts = 0
 	w, err := createStdOutOutput(c)
-	assert.EqualError(t, err, "Output attempts for stdout must be at least 1, 0 provided")
+	assert.EqualError(t, err, "output attempts for stdout must be at least 1, 0 provided")
 	assert.Nil(t, w)
 
 	// All good
-	c = viper.New()
-	c.Set("output.stdout.attempts", 1)
+	c = &Config{}
+	c.Output.Stdout.Attempts = 1
 	w, err = createStdOutOutput(c)
 	assert.Nil(t, err)
 	assert.NotNil(t, w)
 	assert.IsType(t, &os.File{}, w.w)
 }
 
-func Test_createOutput(t *testing.T) {
+func TestCreateOutput(t *testing.T) {
 	// no outputs
-	c := viper.New()
+	c := &Config{}
 	w, err := createOutput(c)
-	assert.EqualError(t, err, "No outputs were configured")
+	assert.EqualError(t, err, "no outputs were configured")
 	assert.Nil(t, w)
 
 	// multiple outputs
@@ -253,65 +248,65 @@ func Test_createOutput(t *testing.T) {
 
 	defer l.Close()
 
-	c = viper.New()
-	c.Set("output.syslog.enabled", true)
-	c.Set("output.syslog.attempts", 1)
-	c.Set("output.syslog.network", "tcp")
-	c.Set("output.syslog.address", l.Addr().String())
+	c = &Config{}
+	c.Output.Syslog.Enabled = true
+	c.Output.Syslog.Attempts = 1
+	c.Output.Syslog.Network = "tcp"
+	c.Output.Syslog.Address = l.Addr().String()
 
-	c.Set("output.file.enabled", true)
-	c.Set("output.file.attempts", 1)
-	c.Set("output.file.path", path.Join(os.TempDir(), "go-audit.test.log"))
-	c.Set("output.file.mode", 0644)
-	c.Set("output.file.user", u.Username)
-	c.Set("output.file.group", g.Name)
+	c.Output.File.Enabled = true
+	c.Output.File.Attempts = 1
+	c.Output.File.Path = path.Join(os.TempDir(), "go-audit.test.log")
+	c.Output.File.Mode = 0644
+	c.Output.File.User = u.Username
+	c.Output.File.Group = g.Name
 
 	w, err = createOutput(c)
-	assert.EqualError(t, err, "Only one output can be enabled at a time")
+	assert.EqualError(t, err, "only one output can be enabled at a time")
 	assert.Nil(t, w)
 
 	// syslog error
-	c = viper.New()
-	c.Set("output.syslog.enabled", true)
-	c.Set("output.syslog.attempts", 0)
+	c = &Config{}
+	c.Output.Syslog.Enabled = true
+	c.Output.Syslog.Attempts = 0
 	w, err = createOutput(c)
-	assert.EqualError(t, err, "Output attempts for syslog must be at least 1, 0 provided")
+	assert.EqualError(t, err, "output attempts for syslog must be at least 1, 0 provided")
 	assert.Nil(t, w)
 
 	// file error
-	c = viper.New()
-	c.Set("output.file.enabled", true)
-	c.Set("output.file.attempts", 0)
+	c = &Config{}
+	c.Output.File.Enabled = true
+	c.Output.File.Attempts = 0
 	w, err = createOutput(c)
-	assert.EqualError(t, err, "Output attempts for file must be at least 1, 0 provided")
+	assert.EqualError(t, err, "output attempts for file must be at least 1, 0 provided")
 	assert.Nil(t, w)
 
 	// stdout error
-	c = viper.New()
-	c.Set("output.stdout.enabled", true)
-	c.Set("output.stdout.attempts", 0)
+	c = &Config{}
+	c.Output.Stdout.Enabled = true
+	c.Output.Stdout.Attempts = 0
 	w, err = createOutput(c)
-	assert.EqualError(t, err, "Output attempts for stdout must be at least 1, 0 provided")
+	assert.EqualError(t, err, "output attempts for stdout must be at least 1, 0 provided")
 	assert.Nil(t, w)
 
 	// All good syslog
-	c = viper.New()
-	c.Set("output.syslog.attempts", 1)
-	c.Set("output.syslog.network", "tcp")
-	c.Set("output.syslog.address", l.Addr().String())
+	c = &Config{}
+	c.Output.Syslog.Attempts = 1
+	c.Output.Syslog.Network = "tcp"
+	c.Output.Syslog.Address = l.Addr().String()
 	w, err = createSyslogOutput(c)
 	assert.Nil(t, err)
 	assert.NotNil(t, w)
 	assert.IsType(t, &syslog.Writer{}, w.w)
 
 	// All good file
-	c = viper.New()
-	c.Set("output.file.enabled", true)
-	c.Set("output.file.attempts", 1)
-	c.Set("output.file.path", path.Join(os.TempDir(), "go-audit.test.log"))
-	c.Set("output.file.mode", 0644)
-	c.Set("output.file.user", u.Username)
-	c.Set("output.file.group", g.Name)
+	c = &Config{}
+	c.Output.File.Enabled = true
+	c.Output.File.Attempts = 1
+	c.Output.File.Path = path.Join(os.TempDir(), "go-audit.test.log")
+	c.Output.File.Mode = 0644
+	c.Output.File.User = u.Username
+	c.Output.File.Group = g.Name
 	w, err = createOutput(c)
 	assert.Nil(t, err)
 	assert.NotNil(t, w)
@@ -328,7 +323,7 @@ func Test_createOutput(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func Benchmark_MultiPacketMessage(b *testing.B) {
+func BenchmarkMultiPacketMessage(b *testing.B) {
 	marshaller := NewAuditMarshaller(NewAuditWriter(&noopWriter{}, 1), uint16(1300), uint16(1399), false, false, 1, []AuditFilter{})
 
 	data := make([][]byte, 6)

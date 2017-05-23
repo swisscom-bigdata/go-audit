@@ -73,6 +73,28 @@ output:
     user: root
     group: root
 
+  kafka:
+    enabled: false
+    attempts: 1
+
+    # Kafka topic to produce audit logs.
+    topic: audit-logs
+
+    # Broker config according to confluent-kafka-go library:
+    # https://godoc.org/github.com/Shopify/sarama#Config.
+    # All fields should be camelcase with lower first letter.
+    config:
+      client.id: go-audit
+      metadata.broker.list: 127.0.0.1:9092
+      sasl.mechanisms: GSSAPI
+      sasl.kerberos.service.name: kafka
+      sasl.kerberos.principal: kafkaclient
+      sasl.kerberos.keytab: /etc/krb5.keytab
+      compression.codec: snappy
+      message.send.max.retries: 3
+      retry.backoff.ms: 100
+      max.in.flight.requests.per.connection: 100000
+
 # Configure logging, only stdout and stderr are used.
 log:
   # Gives you a bit of control over log line prefixes. Default is 0 - nothing.

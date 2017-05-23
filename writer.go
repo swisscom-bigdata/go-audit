@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"io"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 type AuditWriter struct {
@@ -30,7 +32,7 @@ func (a *AuditWriter) Write(msg *AuditMessageGroup) (err error) {
 		if i != a.attempts {
 			// We have to reset the encoder because write errors are kept internally and can not be retried
 			a.e = json.NewEncoder(a.w)
-			el.Println("Failed to write message, retrying in 1 second. Error:", err)
+			logrus.WithError(err).Error("failed to write message, retrying in 1 second")
 			time.Sleep(time.Second * 1)
 		}
 	}

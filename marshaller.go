@@ -1,10 +1,11 @@
 package main
 
 import (
-	"os"
 	"regexp"
 	"syscall"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -123,8 +124,7 @@ func (a *AuditMarshaller) completeMessage(seq int) {
 	}
 
 	if err := a.writer.Write(msg); err != nil {
-		el.Println("Failed to write message. Error:", err)
-		os.Exit(1)
+		logrus.WithError(err).Fatal("failed to write message")
 	}
 
 	delete(a.msgs, seq)
@@ -166,11 +166,11 @@ func (a *AuditMarshaller) detectMissing(seq int) {
 			}
 
 			if a.logOutOfOrder {
-				el.Println("Got sequence", missedSeq, "after", lag, "messages. Worst lag so far", a.worstLag, "messages")
+				logrus.Error("got sequence", missedSeq, "after", lag, "messages; worst lag so far", a.worstLag, "messages")
 			}
 			delete(a.missed, missedSeq)
 		} else if seq-missedSeq > a.maxOutOfOrder {
-			el.Printf("Likely missed sequence %d, current %d, worst message delay %d\n", missedSeq, seq, a.worstLag)
+			logrus.Errorf("likely missed sequence %d, current %d, worst message delay %d", missedSeq, seq, a.worstLag)
 			delete(a.missed, missedSeq)
 		}
 	}
