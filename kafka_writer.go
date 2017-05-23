@@ -49,6 +49,10 @@ func (kw *kafkaWriter) handleResponse(ctx context.Context) {
 			if msg, ok := evt.(*kafka.Message); ok && msg.TopicPartition.Error != nil {
 				logrus.WithError(msg.TopicPartition.Error).Error("failed to producer message")
 			}
+		case evt := <-kw.producer.Events():
+			if msg, ok := evt.(*kafka.Message); ok && msg.TopicPartition.Error != nil {
+				logrus.WithError(msg.TopicPartition.Error).Error("failed to producer message")
+			}
 		case <-ctx.Done():
 			kw.producer.Close()
 			return
