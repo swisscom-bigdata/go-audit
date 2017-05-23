@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/sirupsen/logrus"
 )
@@ -11,16 +13,18 @@ type kafkaWriter struct {
 	responseEvents chan kafka.Event
 }
 
-func newKafkaWriter(topic string, cfg kafka.ConfigMap) (*kafkaWriter, error) {
+func newKafkaWriter(ctx context.Context, topic string, cfg kafka.ConfigMap) (*kafkaWriter, error) {
 	p, err := kafka.NewProducer(&cfg)
 	if err != nil {
 		return nil, err
 	}
-	return &kafkaWriter{
+	kw := &kafkaWriter{
 		producer:       p,
 		topic:          topic,
 		responseEvents: make(chan kafka.Event),
-	}, nil
+	}
+	go kw.handleResponse(ctx)
+	return kw, nil
 }
 
 func (kw *kafkaWriter) Write(value []byte) (int, error) {
@@ -38,10 +42,16 @@ func (kw *kafkaWriter) Write(value []byte) (int, error) {
 	return len(value), nil
 }
 
-func (kw *kafkaWriter) handleResponse() {
-	for evt := range kw.responseEvents {
-		if msg, ok := evt.(*kafka.Message); ok && msg.TopicPartition.Error != nil {
-			logrus.WithError(msg.TopicPartition.Error).Error("failed to producer message")
+func (kw *kafkaWriter) handleResponse(ctx context.Context) {
+	for {
+		select {
+		case evt := <-kw.responseEvents:
+			if msg, ok := evt.(*kafka.Message); ok && msg.TopicPartition.Error != nil {
+				logrus.WithError(msg.TopicPartition.Error).Error("failed to producer message")
+			}
+		case <-ctx.Done():
+			kw.producer.Close()
+			return
 		}
 	}
 }

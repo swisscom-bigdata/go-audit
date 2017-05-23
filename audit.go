@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -36,8 +37,10 @@ func main() {
 		logrus.WithError(err).Fatal("failed to load configuration")
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	// output needs to be created before anything that write to stdout
-	writer, err := createOutput(config)
+	writer, err := createOutput(ctx, config)
 	if err != nil {
 		logrus.WithError(err).Fatal("failed to create ouput")
 	}
@@ -62,19 +65,35 @@ func main() {
 
 	logrus.Infof("Started processing events in the range [%d, %d]", config.Events.Min, config.Events.Max)
 
+	go loop(ctx, nlClient, marshaller)
+
+	stop := make(chan os.Signal, 1)
+	go func() {
+		signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
+		defer signal.Stop(stop)
+	}()
+
+	<-stop
+	cancel()
+}
+
+func loop(ctx context.Context, nlClient *NetlinkClient, marshaller *AuditMarshaller) {
 	//Main loop. Get data from netlink and send it to the json lib for processing
 	for {
-		msg, err := nlClient.Receive()
-		if err != nil {
-			logrus.WithError(err).Error("failed to receive a message")
-			continue
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			msg, err := nlClient.Receive()
+			if err != nil {
+				logrus.WithError(err).Error("failed to receive a message")
+				continue
+			}
+			if msg == nil {
+				continue
+			}
+			marshaller.Consume(msg)
 		}
-
-		if msg == nil {
-			continue
-		}
-
-		marshaller.Consume(msg)
 	}
 }
 
@@ -107,7 +126,7 @@ func setRules(config *Config, e executor) error {
 	return nil
 }
 
-func createOutput(config *Config) (*AuditWriter, error) {
+func createOutput(ctx context.Context, config *Config) (*AuditWriter, error) {
 	var writer *AuditWriter
 	var err error
 	i := 0
@@ -140,7 +159,7 @@ func createOutput(config *Config) (*AuditWriter, error) {
 
 	if config.Output.Kafka.Enabled {
 		i++
-		writer, err = createKafkaOutput(config)
+		writer, err = createKafkaOutput(ctx, config)
 		if err != nil {
 			return nil, err
 		}
@@ -261,12 +280,13 @@ func createStdOutOutput(config *Config) (*AuditWriter, error) {
 	return NewAuditWriter(os.Stdout, attempts), nil
 }
 
-func createKafkaOutput(config *Config) (*AuditWriter, error) {
+func createKafkaOutput(ctx context.Context, config *Config) (*AuditWriter, error) {
 	attempts := config.Output.Kafka.Attempts
 	if attempts < 1 {
 		return nil, fmt.Errorf("output attempts for Kafka must be at least 1, %v provided", attempts)
 	}
 	kw, err := newKafkaWriter(
+		ctx,
 		config.Output.Kafka.Topic,
 		config.Output.Kafka.Config,
 	)

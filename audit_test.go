@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"io/ioutil"
 	"log/syslog"
@@ -226,7 +227,7 @@ func TestCreateStdOutOutput(t *testing.T) {
 func TestCreateOutput(t *testing.T) {
 	// no outputs
 	c := &Config{}
-	w, err := createOutput(c)
+	w, err := createOutput(context.Background(), c)
 	assert.EqualError(t, err, "no outputs were configured")
 	assert.Nil(t, w)
 
@@ -261,7 +262,7 @@ func TestCreateOutput(t *testing.T) {
 	c.Output.File.User = u.Username
 	c.Output.File.Group = g.Name
 
-	w, err = createOutput(c)
+	w, err = createOutput(context.Background(), c)
 	assert.EqualError(t, err, "only one output can be enabled at a time")
 	assert.Nil(t, w)
 
@@ -269,7 +270,7 @@ func TestCreateOutput(t *testing.T) {
 	c = &Config{}
 	c.Output.Syslog.Enabled = true
 	c.Output.Syslog.Attempts = 0
-	w, err = createOutput(c)
+	w, err = createOutput(context.Background(), c)
 	assert.EqualError(t, err, "output attempts for syslog must be at least 1, 0 provided")
 	assert.Nil(t, w)
 
@@ -277,7 +278,7 @@ func TestCreateOutput(t *testing.T) {
 	c = &Config{}
 	c.Output.File.Enabled = true
 	c.Output.File.Attempts = 0
-	w, err = createOutput(c)
+	w, err = createOutput(context.Background(), c)
 	assert.EqualError(t, err, "output attempts for file must be at least 1, 0 provided")
 	assert.Nil(t, w)
 
@@ -285,7 +286,7 @@ func TestCreateOutput(t *testing.T) {
 	c = &Config{}
 	c.Output.Stdout.Enabled = true
 	c.Output.Stdout.Attempts = 0
-	w, err = createOutput(c)
+	w, err = createOutput(context.Background(), c)
 	assert.EqualError(t, err, "output attempts for stdout must be at least 1, 0 provided")
 	assert.Nil(t, w)
 
@@ -307,7 +308,7 @@ func TestCreateOutput(t *testing.T) {
 	c.Output.File.Mode = 0644
 	c.Output.File.User = u.Username
 	c.Output.File.Group = g.Name
-	w, err = createOutput(c)
+	w, err = createOutput(context.Background(), c)
 	assert.Nil(t, err)
 	assert.NotNil(t, w)
 	assert.IsType(t, &AuditWriter{}, w)
