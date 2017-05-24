@@ -70,7 +70,7 @@ type Config struct {
 type Filter struct {
 	Syscall     int    `yaml:"syscall"`
 	MessageType int    `yaml:"message_type"`
-	Regexp      string `yaml:"regexp"`
+	Regex       string `yaml:"regex"`
 }
 
 func loadConfig(filename string) (*Config, error) {

@@ -63,7 +63,7 @@ func main() {
 		createFilters(config),
 	)
 
-	logrus.Infof("Started processing events in the range [%d, %d]", config.Events.Min, config.Events.Max)
+	logrus.Infof("started processing events in the range [%d, %d]", config.Events.Min, config.Events.Max)
 
 	go loop(ctx, nlClient, marshaller)
 
@@ -311,9 +311,9 @@ func createFilters(config *Config) []AuditFilter {
 		if f.MessageType != 0 {
 			af.messageType = uint16(f.MessageType)
 		}
-		if f.Regexp != "" {
-			if af.regex, err = regexp.Compile(f.Regexp); err != nil {
-				logrus.WithError(err).Fatalf("`regex` in filter %d could not be parsed: %s", i+1, f.Regexp)
+		if f.Regex != "" {
+			if af.regex, err = regexp.Compile(f.Regex); err != nil {
+				logrus.WithError(err).Fatalf("`regex` in filter %d could not be parsed: %s", i+1, f.Regex)
 			}
 		}
 		if f.Syscall != 0 {
