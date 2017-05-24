@@ -8,9 +8,8 @@ import (
 )
 
 type kafkaWriter struct {
-	producer       *kafka.Producer
-	topic          string
-	responseEvents chan kafka.Event
+	producer *kafka.Producer
+	topic    string
 }
 
 func newKafkaWriter(ctx context.Context, topic string, cfg kafka.ConfigMap) (*kafkaWriter, error) {
@@ -19,9 +18,8 @@ func newKafkaWriter(ctx context.Context, topic string, cfg kafka.ConfigMap) (*ka
 		return nil, err
 	}
 	kw := &kafkaWriter{
-		producer:       p,
-		topic:          topic,
-		responseEvents: make(chan kafka.Event),
+		producer: p,
+		topic:    topic,
 	}
 	go kw.handleResponse(ctx)
 	return kw, nil
@@ -36,7 +34,8 @@ func (kw *kafkaWriter) Write(value []byte) (int, error) {
 		Value: value,
 	}
 
-	if err := kw.producer.Produce(msg, kw.responseEvents); err != nil {
+	// set delivery channel `nil` because we will read from Events channel
+	if err := kw.producer.Produce(msg, nil); err != nil {
 		return 0, err
 	}
 	return len(value), nil
@@ -45,10 +44,6 @@ func (kw *kafkaWriter) Write(value []byte) (int, error) {
 func (kw *kafkaWriter) handleResponse(ctx context.Context) {
 	for {
 		select {
-		case evt := <-kw.responseEvents:
-			if msg, ok := evt.(*kafka.Message); ok && msg.TopicPartition.Error != nil {
-				logrus.WithError(msg.TopicPartition.Error).Error("failed to producer message")
-			}
 		case evt := <-kw.producer.Events():
 			if msg, ok := evt.(*kafka.Message); ok && msg.TopicPartition.Error != nil {
 				logrus.WithError(msg.TopicPartition.Error).Error("failed to producer message")
