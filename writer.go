@@ -12,6 +12,7 @@ type AuditWriter struct {
 	e        *json.Encoder
 	w        io.Writer
 	attempts int
+	hostname string
 }
 
 func NewAuditWriter(w io.Writer, attempts int) *AuditWriter {
@@ -19,10 +20,12 @@ func NewAuditWriter(w io.Writer, attempts int) *AuditWriter {
 		e:        json.NewEncoder(w),
 		w:        w,
 		attempts: attempts,
+		hostname: getHostname(),
 	}
 }
 
 func (a *AuditWriter) Write(msg *AuditMessageGroup) (err error) {
+	msg.Hostname = a.hostname
 	for i := 0; i < a.attempts; i++ {
 		err = a.e.Encode(msg)
 		if err == nil {

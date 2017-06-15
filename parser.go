@@ -2,11 +2,14 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"os/user"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 var uidMap = map[string]string{}
@@ -30,6 +33,7 @@ type AuditMessage struct {
 type AuditMessageGroup struct {
 	Seq           int               `json:"sequence"`
 	AuditTime     string            `json:"timestamp"`
+	Hostname      string            `json:"hostname"`
 	CompleteAfter time.Time         `json:"-"`
 	Msgs          []*AuditMessage   `json:"messages"`
 	UidMap        map[string]string `json:"uid_map"`
@@ -181,4 +185,13 @@ func getUsername(uid string) string {
 	}
 
 	return uname
+}
+
+func getHostname() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		logrus.WithError(err).Error("failed to resolv hostname")
+		hostname = "UNKNOWN_HOSTNAME"
+	}
+	return hostname
 }
