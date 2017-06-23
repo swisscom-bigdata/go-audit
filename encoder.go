@@ -55,12 +55,10 @@ type avroEncoder struct {
 }
 
 func (a *avroEncoder) Encode(data []byte) ([]byte, []byte, error) {
-	var amg interface{}
-	if err := json.Unmarshal(data, &amg); err != nil {
+	m := make(map[string]interface{})
+	if err := json.Unmarshal(data, &m); err != nil {
 		return nil, nil, err
 	}
-	m := amg.(map[string]interface{})
-
 	value, err := a.codec.BinaryFromNative(nil, m)
 	if err != nil {
 		return nil, nil, err
