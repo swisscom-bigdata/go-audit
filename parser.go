@@ -23,6 +23,11 @@ const (
 	COMPLETE_AFTER    = time.Second * 2 // Log a message after this time or EOE
 )
 
+const (
+	// AvroSchema Defines avro schema accroding to AuditMessageGroup struct.
+	AvroSchema = ``
+)
+
 type AuditMessage struct {
 	Type      uint16 `json:"type"`
 	Data      string `json:"data"`
@@ -32,7 +37,7 @@ type AuditMessage struct {
 
 type AuditMessageGroup struct {
 	Seq           int               `json:"sequence"`
-	AuditTime     string            `json:"timestamp"`
+	AuditTime     int               `json:"timestamp"`
 	Hostname      string            `json:"hostname"`
 	CompleteAfter time.Time         `json:"-"`
 	Msgs          []*AuditMessage   `json:"messages"`
@@ -43,9 +48,13 @@ type AuditMessageGroup struct {
 // Creates a new message group from the details parsed from the message
 func NewAuditMessageGroup(am *AuditMessage) *AuditMessageGroup {
 	//TODO: allocating 6 msgs per group is lame and we _should_ know ahead of time roughly how many we need
+	auditTime, err := strconv.Atoi(am.AuditTime)
+	if err != nil {
+		auditTime = int(time.Now().UTC().Unix())
+	}
 	amg := &AuditMessageGroup{
 		Seq:           am.Seq,
-		AuditTime:     am.AuditTime,
+		AuditTime:     auditTime,
 		CompleteAfter: time.Now().Add(COMPLETE_AFTER),
 		UidMap:        make(map[string]string, 2), // Usually only 2 individual uids per execve
 		Msgs:          make([]*AuditMessage, 0, 6),

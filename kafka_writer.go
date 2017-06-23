@@ -7,30 +7,60 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type kafkaWriter struct {
-	producer *kafka.Producer
-	topic    string
+// Encoder encodes data from auditd to publish it in Kafka.
+type Encoder interface {
+	Encode(data []byte) (key, value []byte, err error)
 }
 
-func newKafkaWriter(ctx context.Context, topic string, cfg kafka.ConfigMap) (*kafkaWriter, error) {
-	p, err := kafka.NewProducer(&cfg)
+// KafkaConfig defines configuration for Kafka Writer.
+type KafkaConfig struct {
+	Enabled  bool            `yaml:"enabled"`
+	Attempts int             `yaml:"attempts"`
+	Topic    string          `yaml:"topic"`
+	Encoder  EncoderConfig   `yaml:"encoder"`
+	Config   kafka.ConfigMap `yaml:"config"`
+}
+
+// KafkaWriter is an io.Writer that writes to the Kafka.
+type KafkaWriter struct {
+	producer *kafka.Producer
+	topic    string
+	enc      Encoder
+}
+
+// NewKafkaWriter creates new KafkaWrite.
+func NewKafkaWriter(ctx context.Context, cfg KafkaConfig) (*KafkaWriter, error) {
+	cfg.Encoder.Topic = cfg.Topic
+	enc, err := NewEncoder(cfg.Encoder)
 	if err != nil {
 		return nil, err
 	}
-	kw := &kafkaWriter{
+
+	p, err := kafka.NewProducer(&cfg.Config)
+	if err != nil {
+		return nil, err
+	}
+	kw := &KafkaWriter{
 		producer: p,
-		topic:    topic,
+		topic:    cfg.Topic,
+		enc:      enc,
 	}
 	go kw.handleResponse(ctx)
 	return kw, nil
 }
 
-func (kw *kafkaWriter) Write(value []byte) (int, error) {
+// Write writes data to the Kafka, implements io.Writer.
+func (kw *KafkaWriter) Write(value []byte) (int, error) {
+	key, value, err := kw.enc.Encode(value)
+	if err != nil {
+		return 0, err
+	}
 	msg := &kafka.Message{
 		TopicPartition: kafka.TopicPartition{
 			Topic:     &kw.topic,
 			Partition: kafka.PartitionAny,
 		},
+		Key:   key,
 		Value: value,
 	}
 
@@ -41,7 +71,7 @@ func (kw *kafkaWriter) Write(value []byte) (int, error) {
 	return len(value), nil
 }
 
-func (kw *kafkaWriter) handleResponse(ctx context.Context) {
+func (kw *KafkaWriter) handleResponse(ctx context.Context) {
 	for {
 		select {
 		case evt := <-kw.producer.Events():

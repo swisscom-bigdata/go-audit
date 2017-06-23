@@ -80,6 +80,12 @@ output:
     # Kafka topic to produce audit logs.
     topic: audit-logs
 
+    encoder:
+        # `json` or `avro`, default is `json`.
+        codec: avro
+        schema_file: avro_schema.json
+        schema_registry_url:  http://localhost
+
     # Broker config according to confluent-kafka-go library:
     # https://godoc.org/github.com/Shopify/sarama#Config.
     # All fields should be camelcase with lower first letter.
