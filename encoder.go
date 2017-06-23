@@ -12,7 +12,7 @@ import (
 	"github.com/karrick/goavro"
 )
 
-// Defines pissoble encoders.
+// Defines pissible encoders.
 const (
 	JSONEncoderType = "json"
 	AvroEncoderType = "avro"

@@ -23,11 +23,6 @@ const (
 	COMPLETE_AFTER    = time.Second * 2 // Log a message after this time or EOE
 )
 
-const (
-	// AvroSchema Defines avro schema accroding to AuditMessageGroup struct.
-	AvroSchema = ``
-)
-
 type AuditMessage struct {
 	Type      uint16 `json:"type"`
 	Data      string `json:"data"`
