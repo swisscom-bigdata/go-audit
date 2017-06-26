@@ -9,7 +9,7 @@ import (
 
 // Encoder encodes data from auditd to publish it in Kafka.
 type Encoder interface {
-	Encode(data []byte) (key, value []byte, err error)
+	Encode(data []byte) (value []byte, err error)
 }
 
 // KafkaConfig defines configuration for Kafka Writer.
@@ -51,7 +51,7 @@ func NewKafkaWriter(ctx context.Context, cfg KafkaConfig) (*KafkaWriter, error) 
 
 // Write writes data to the Kafka, implements io.Writer.
 func (kw *KafkaWriter) Write(value []byte) (int, error) {
-	key, value, err := kw.enc.Encode(value)
+	value, err := kw.enc.Encode(value)
 	if err != nil {
 		return 0, err
 	}
@@ -60,7 +60,6 @@ func (kw *KafkaWriter) Write(value []byte) (int, error) {
 			Topic:     &kw.topic,
 			Partition: kafka.PartitionAny,
 		},
-		Key:   key,
 		Value: value,
 	}
 

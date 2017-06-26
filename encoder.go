@@ -54,14 +54,14 @@ type avroEncoder struct {
 	schemaID int
 }
 
-func (a *avroEncoder) Encode(data []byte) ([]byte, []byte, error) {
+func (a *avroEncoder) Encode(data []byte) ([]byte, error) {
 	m := make(map[string]interface{})
 	if err := json.Unmarshal(data, &m); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	value, err := a.codec.BinaryFromNative(nil, m)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	buf := bytes.NewBuffer([]byte{})
@@ -69,17 +69,13 @@ func (a *avroEncoder) Encode(data []byte) ([]byte, []byte, error) {
 	binary.Write(buf, binary.BigEndian, int32(a.schemaID))
 	binary.Write(buf, binary.BigEndian, value)
 
-	return []byte(m["hostname"].(string)), buf.Bytes(), nil
+	return buf.Bytes(), nil
 }
 
 type jsonEncoder struct{}
 
-func (*jsonEncoder) Encode(data []byte) ([]byte, []byte, error) {
-	var amg AuditMessageGroup
-	if err := json.Unmarshal(data, &amg); err != nil {
-		return nil, nil, err
-	}
-	return []byte(amg.Hostname), data, nil
+func (*jsonEncoder) Encode(data []byte) ([]byte, error) {
+	return data, nil
 }
 
 func avroSchema(cfg EncoderConfig) (string, int, error) {

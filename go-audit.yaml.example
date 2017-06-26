@@ -82,7 +82,7 @@ output:
 
     encoder:
         # `json` or `avro`, default is `json`.
-        codec: avro
+        type: avro
         schema_file: avro_schema.json
         schema_registry_url:  http://localhost
 
