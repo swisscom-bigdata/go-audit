@@ -42,7 +42,7 @@ func main() {
 	// output needs to be created before anything that write to stdout
 	writer, err := createOutput(ctx, config)
 	if err != nil {
-		logrus.WithError(err).Fatal("failed to create ouput")
+		logrus.WithError(err).Fatal("failed to create output")
 	}
 
 	if err := setRules(config, exe); err != nil {
@@ -285,10 +285,9 @@ func createKafkaOutput(ctx context.Context, config *Config) (*AuditWriter, error
 	if attempts < 1 {
 		return nil, fmt.Errorf("output attempts for Kafka must be at least 1, %v provided", attempts)
 	}
-	kw, err := newKafkaWriter(
+	kw, err := NewKafkaWriter(
 		ctx,
-		config.Output.Kafka.Topic,
-		config.Output.Kafka.Config,
+		config.Output.Kafka,
 	)
 	if err != nil {
 		return nil, err

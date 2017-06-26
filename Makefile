@@ -36,11 +36,11 @@ builder:
 
 docker-build: builder
 docker-build:
-	docker run -v ${CURDIR}:/go/src/${GO_AUDIT_PACKAGE} -w /go/src/${GO_AUDIT_PACKAGE}  golang-librdkafka go build -v
+	docker run --rm -v ${CURDIR}:/go/src/${GO_AUDIT_PACKAGE} -w /go/src/${GO_AUDIT_PACKAGE}  golang-librdkafka go build -v
 
 docker-test: builder
 docker-test:
-	docker run -v ${CURDIR}:/go/src/${GO_AUDIT_PACKAGE} -w /go/src/${GO_AUDIT_PACKAGE}  golang-librdkafka go test -v
+	docker run --rm -v ${CURDIR}:/go/src/${GO_AUDIT_PACKAGE} -w /go/src/${GO_AUDIT_PACKAGE}  golang-librdkafka go test -v
 
 .PHONY: test test-cov-html bench bench-cpu bench-cpu-long build
 .DEFAULT_GOAL := build

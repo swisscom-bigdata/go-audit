@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"log/syslog"
 
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -49,12 +48,7 @@ type Config struct {
 			Group    string `yaml:"group"`
 		} `yaml:"file"`
 
-		Kafka struct {
-			Enabled  bool            `yaml:"enabled"`
-			Attempts int             `yaml:"attempts"`
-			Topic    string          `yaml:"topic"`
-			Config   kafka.ConfigMap `yaml:"config"`
-		} `yaml:"kafka"`
+		Kafka KafkaConfig `yaml:"kafka"`
 	} `yaml:"output"`
 
 	Log struct {
