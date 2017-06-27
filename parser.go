@@ -48,8 +48,9 @@ func NewAuditMessageGroup(am *AuditMessage) *AuditMessageGroup {
 		auditTime = int(time.Now().UTC().Unix())
 	}
 	amg := &AuditMessageGroup{
-		Seq:           am.Seq,
-		AuditTime:     auditTime,
+		Seq: am.Seq,
+		// send time in milliseconds
+		AuditTime:     auditTime * 1000,
 		CompleteAfter: time.Now().Add(COMPLETE_AFTER),
 		UidMap:        make(map[string]string, 2), // Usually only 2 individual uids per execve
 		Msgs:          make([]*AuditMessage, 0, 6),
