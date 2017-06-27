@@ -48,7 +48,7 @@ type AuditMessageGroup struct {
 func NewAuditMessageGroup(am *AuditMessage) *AuditMessageGroup {
 	auditUnixTime, err := strconv.ParseInt(am.AuditTime, 10, 64)
 	if err != nil {
-		auditUnixTime = time.Now().UTC().Unix()
+		auditUnixTime = time.Now().Unix()
 	}
 	auditTime := time.Unix(auditUnixTime, 0)
 
