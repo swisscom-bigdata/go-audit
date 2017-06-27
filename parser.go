@@ -32,7 +32,10 @@ type AuditMessage struct {
 
 type AuditMessageGroup struct {
 	Seq           int               `json:"sequence"`
-	AuditTime     int               `json:"timestamp"`
+	AuditTime     int64             `json:"timestamp"`
+	AuditYear     int               `json:"year"`
+	AuditMonth    int               `json:"month"`
+	AuditDay      int               `json:"day"`
 	Hostname      string            `json:"hostname"`
 	CompleteAfter time.Time         `json:"-"`
 	Msgs          []*AuditMessage   `json:"messages"`
@@ -42,15 +45,20 @@ type AuditMessageGroup struct {
 
 // Creates a new message group from the details parsed from the message
 func NewAuditMessageGroup(am *AuditMessage) *AuditMessageGroup {
-	//TODO: allocating 6 msgs per group is lame and we _should_ know ahead of time roughly how many we need
-	auditTime, err := strconv.Atoi(am.AuditTime)
+	auditUnixTime, err := strconv.ParseInt(am.AuditTime, 10, 64)
 	if err != nil {
-		auditTime = int(time.Now().UTC().Unix())
+		auditUnixTime = time.Now().UTC().Unix()
 	}
+	auditTime := time.Unix(auditUnixTime, 0)
+
+	//TODO: allocating 6 msgs per group is lame and we _should_ know ahead of time roughly how many we need
 	amg := &AuditMessageGroup{
 		Seq: am.Seq,
 		// send time in milliseconds
-		AuditTime:     auditTime * 1000,
+		AuditTime:     auditUnixTime * 1000,
+		AuditYear:     auditTime.Year(),
+		AuditMonth:    int(auditTime.Month()),
+		AuditDay:      auditTime.Day(),
 		CompleteAfter: time.Now().Add(COMPLETE_AFTER),
 		UidMap:        make(map[string]string, 2), // Usually only 2 individual uids per execve
 		Msgs:          make([]*AuditMessage, 0, 6),
