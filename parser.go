@@ -33,9 +33,10 @@ type AuditMessage struct {
 type AuditMessageGroup struct {
 	Seq           int               `json:"sequence"`
 	AuditTime     int64             `json:"timestamp"`
-	AuditYear     int               `json:"year"`
-	AuditMonth    int               `json:"month"`
-	AuditDay      int               `json:"day"`
+	AuditYear     string            `json:"year"`
+	AuditMonth    string            `json:"month"`
+	AuditDay      string            `json:"day"`
+	AuditHour     string            `json:"hour"`
 	Hostname      string            `json:"hostname"`
 	CompleteAfter time.Time         `json:"-"`
 	Msgs          []*AuditMessage   `json:"messages"`
@@ -56,9 +57,10 @@ func NewAuditMessageGroup(am *AuditMessage) *AuditMessageGroup {
 		Seq: am.Seq,
 		// send time in milliseconds
 		AuditTime:     auditUnixTime * 1000,
-		AuditYear:     auditTime.Year(),
-		AuditMonth:    int(auditTime.Month()),
-		AuditDay:      auditTime.Day(),
+		AuditYear:     auditTime.Format("2006"),
+		AuditMonth:    auditTime.Format("01"),
+		AuditDay:      auditTime.Format("02"),
+		AuditHour:     auditTime.Format("15"),
 		CompleteAfter: time.Now().Add(COMPLETE_AFTER),
 		UidMap:        make(map[string]string, 2), // Usually only 2 individual uids per execve
 		Msgs:          make([]*AuditMessage, 0, 6),
