@@ -25,6 +25,7 @@ func NewAuditWriter(w io.Writer, attempts int) *AuditWriter {
 }
 
 func (a *AuditWriter) Write(msg *AuditMessageGroup) (err error) {
+	sentLogsTotal.WithLabelValues(msg.Hostname).Inc()
 	msg.Hostname = a.hostname
 	for i := 0; i < a.attempts; i++ {
 		err = a.e.Encode(msg)
@@ -40,5 +41,9 @@ func (a *AuditWriter) Write(msg *AuditMessageGroup) (err error) {
 		}
 	}
 
-	return err
+	if err != nil {
+		sentErrorsTotal.WithLabelValues(msg.Hostname).Inc()
+		return err
+	}
+	return nil
 }

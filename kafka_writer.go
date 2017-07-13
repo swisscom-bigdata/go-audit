@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/sirupsen/logrus"
@@ -71,11 +72,17 @@ func (kw *KafkaWriter) Write(value []byte) (int, error) {
 }
 
 func (kw *KafkaWriter) handleResponse(ctx context.Context) {
+	hst := getHostname()
 	for {
 		select {
 		case evt := <-kw.producer.Events():
-			if msg, ok := evt.(*kafka.Message); ok && msg.TopicPartition.Error != nil {
-				logrus.WithError(msg.TopicPartition.Error).Error("failed to producer message")
+
+			if msg, ok := evt.(*kafka.Message); ok {
+				if msg.TopicPartition.Error != nil {
+					logrus.WithError(msg.TopicPartition.Error).Error("failed to producer message")
+					sentErrorsTotal.WithLabelValues(hst).Inc()
+				}
+				sentLatencyNanoseconds.WithLabelValues(hst).Observe(float64(time.Since(msg.Timestamp)))
 			}
 		case <-ctx.Done():
 			kw.producer.Close()
