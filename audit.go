@@ -39,7 +39,7 @@ func main() {
 		logrus.WithError(err).Fatal("failed to load configuration")
 	}
 
-	if err := initWebServer(config.MetricsAddress); err ! =nil {
+	if err := initWebServer(config.MetricsAddress); err != nil {
 		logrus.WithError(err).Fatal("failed to init metrics")
 	}
 
