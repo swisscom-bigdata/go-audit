@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log/syslog"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -15,6 +16,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 )
 
@@ -35,6 +37,10 @@ func main() {
 	config, err := loadConfig(*configFile)
 	if err != nil {
 		logrus.WithError(err).Fatal("failed to load configuration")
+	}
+
+	if err := initWebServer(config.MetricsAddress); err ! =nil {
+		logrus.WithError(err).Fatal("failed to init metrics")
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -95,6 +101,20 @@ func loop(ctx context.Context, nlClient *NetlinkClient, marshaller *AuditMarshal
 			marshaller.Consume(msg)
 		}
 	}
+}
+
+func initWebServer(addr string) error {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", prometheus.Handler())
+	mux.HandleFunc("/health", func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	go func() {
+		if err := http.ListenAndServe(addr, mux); err != nil {
+			logrus.WithError(err).WithField("addr", addr).Fatal("failed to start web server")
+		}
+	}()
+	return nil
 }
 
 func setRules(config *Config, e executor) error {

@@ -23,6 +23,9 @@ message_tracking:
   # Maximum out of orderness before a missed sequence is presumed dropped, default 500
   max_out_of_order: 500
 
+# The address of exposed prometheus metrics.
+metrics_address: ":9092"
+
 # Configure where to output audit events
 # Only 1 output can be active at a given time
 output:

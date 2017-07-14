@@ -24,6 +24,8 @@ type Config struct {
 		MaxOutOfOrder int  `yaml:"max_out_of_order"`
 	} `yaml:"message_tracking"`
 
+	MetricsAddress string `yaml:"metrics_address"`
+
 	Output struct {
 		Stdout struct {
 			Enabled  bool `yaml:"enabled"`
