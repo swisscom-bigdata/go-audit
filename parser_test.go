@@ -41,7 +41,7 @@ func TestAuditMessageGroupAddMessage(t *testing.T) {
 
 	amg := &AuditMessageGroup{
 		Seq:           1,
-		AuditTime:     "ok",
+		AuditTime:     15000000000,
 		CompleteAfter: time.Now().Add(COMPLETE_AFTER),
 		UidMap:        make(map[string]string, 2),
 	}
@@ -87,7 +87,7 @@ func TestNewAuditMessageGroup(t *testing.T) {
 
 	amg := NewAuditMessageGroup(m)
 	assert.Equal(t, 1019, amg.Seq)
-	assert.Equal(t, "9919", amg.AuditTime)
+	assert.Equal(t, int64(9919000), amg.AuditTime)
 	assert.True(t, amg.CompleteAfter.After(time.Now()), "Complete after time should be greater than right now")
 	assert.Equal(t, 6, cap(amg.Msgs), "Msgs capacity should be 6")
 	assert.Equal(t, 1, len(amg.Msgs), "Msgs should only have 1 message")
@@ -95,7 +95,7 @@ func TestNewAuditMessageGroup(t *testing.T) {
 	assert.Equal(t, m, amg.Msgs[0], "First message should be the original")
 }
 
-func Test_getUsername(t *testing.T) {
+func TestGetUsername(t *testing.T) {
 	uidMap = make(map[string]string, 0)
 	assert.Equal(t, "root", getUsername("0"), "0 should be root you animal")
 	assert.Equal(t, "UNKNOWN_USER", getUsername("-1"), "Expected UNKNOWN_USER")
@@ -123,7 +123,7 @@ func TestAuditMessageGroupMapUids(t *testing.T) {
 
 	amg := &AuditMessageGroup{
 		Seq:           1,
-		AuditTime:     "ok",
+		AuditTime:     15000000000,
 		CompleteAfter: time.Now().Add(COMPLETE_AFTER),
 		UidMap:        make(map[string]string, 2),
 	}

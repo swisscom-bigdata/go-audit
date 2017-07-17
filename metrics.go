@@ -11,6 +11,14 @@ var (
 		}, []string{"host"},
 	)
 
+	inFlightLogs = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "goaudit",
+			Name:      "inflight_logs_total",
+			Help:      "The amount of logs in flight in librdkafka queue",
+		}, []string{"host"},
+	)
+
 	sentErrorsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "goaudit",
@@ -30,6 +38,7 @@ var (
 
 func init() {
 	prometheus.MustRegister(sentLogsTotal)
+	prometheus.MustRegister(inFlightLogs)
 	prometheus.MustRegister(sentErrorsTotal)
 	prometheus.MustRegister(sentLatencyNanoseconds)
 }

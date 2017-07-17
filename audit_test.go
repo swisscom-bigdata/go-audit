@@ -190,7 +190,7 @@ func TestCreateSyslogOutput(t *testing.T) {
 	assert.Nil(t, w)
 
 	// All good
-	l, err := net.Listen("tcp", ":0")
+	l, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +242,7 @@ func TestCreateOutput(t *testing.T) {
 		u.Username = g.Name
 	}
 
-	l, err := net.Listen("tcp", ":0")
+	l, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
 		t.Fatal(err)
 	}

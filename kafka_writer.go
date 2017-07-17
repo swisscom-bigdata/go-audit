@@ -52,6 +52,7 @@ func NewKafkaWriter(ctx context.Context, cfg KafkaConfig) (*KafkaWriter, error) 
 
 // Write writes data to the Kafka, implements io.Writer.
 func (kw *KafkaWriter) Write(value []byte) (int, error) {
+	inFlightLogs.WithLabelValues(hostname).Inc()
 	value, err := kw.enc.Encode(value)
 	if err != nil {
 		return 0, err
@@ -72,7 +73,6 @@ func (kw *KafkaWriter) Write(value []byte) (int, error) {
 }
 
 func (kw *KafkaWriter) handleResponse(ctx context.Context) {
-	hst := getHostname()
 	for {
 		select {
 		case evt := <-kw.producer.Events():
@@ -80,9 +80,11 @@ func (kw *KafkaWriter) handleResponse(ctx context.Context) {
 			if msg, ok := evt.(*kafka.Message); ok {
 				if msg.TopicPartition.Error != nil {
 					logrus.WithError(msg.TopicPartition.Error).Error("failed to producer message")
-					sentErrorsTotal.WithLabelValues(hst).Inc()
+					sentErrorsTotal.WithLabelValues(hostname).Inc()
 				}
-				sentLatencyNanoseconds.WithLabelValues(hst).Observe(float64(time.Since(msg.Timestamp)))
+
+				inFlightLogs.WithLabelValues(hostname).Dec()
+				sentLatencyNanoseconds.WithLabelValues(hostname).Observe(float64(time.Since(msg.Timestamp)))
 			}
 		case <-ctx.Done():
 			kw.producer.Close()

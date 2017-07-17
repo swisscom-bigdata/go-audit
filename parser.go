@@ -17,6 +17,8 @@ var headerEndChar = []byte{")"[0]}
 var headerSepChar = byte(':')
 var spaceChar = byte(' ')
 
+var hostname = getHostname()
+
 const (
 	HEADER_MIN_LENGTH = 7               // Minimum length of an audit header
 	HEADER_START_POS  = 6               // Position in the audit header that the data starts
@@ -61,6 +63,7 @@ func NewAuditMessageGroup(am *AuditMessage) *AuditMessageGroup {
 		AuditMonth:    auditTime.Format("01"),
 		AuditDay:      auditTime.Format("02"),
 		AuditHour:     auditTime.Format("15"),
+		Hostname:      hostname,
 		CompleteAfter: time.Now().Add(COMPLETE_AFTER),
 		UidMap:        make(map[string]string, 2), // Usually only 2 individual uids per execve
 		Msgs:          make([]*AuditMessage, 0, 6),

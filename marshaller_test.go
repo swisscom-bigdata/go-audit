@@ -45,7 +45,7 @@ func TestAuditMarshallerConsume(t *testing.T) {
 
 	assert.Equal(
 		t,
-		"{\"sequence\":1,\"timestamp\":\"10000001\",\"messages\":[{\"type\":1300,\"data\":\"hi there\"},{\"type\":1301,\"data\":\"hi there\"}],\"uid_map\":{}}\n",
+		"{\"sequence\":1,\"timestamp\":10000001000,\"year\":\"1970\",\"month\":\"04\",\"day\":\"26\",\"hour\":\"17\",\"hostname\":\""+hostname+"\",\"messages\":[{\"type\":1300,\"data\":\"hi there\"},{\"type\":1301,\"data\":\"hi there\"}],\"uid_map\":{}}\n",
 		w.String(),
 	)
 	assert.Equal(t, 0, len(m.msgs))
@@ -113,7 +113,7 @@ func TestAuditMarshallerConsume(t *testing.T) {
 		m.Consume(new1320("0"))
 	}
 
-	assert.Equal(t, "{\"sequence\":4,\"timestamp\":\"10000001\",\"messages\":[{\"type\":1300,\"data\":\"hi there\"}],\"uid_map\":{}}\n", w.String())
+	assert.Equal(t, "{\"sequence\":4,\"timestamp\":10000001000,\"year\":\"1970\",\"month\":\"04\",\"day\":\"26\",\"hour\":\"17\",\"hostname\":\""+hostname+"\",\"messages\":[{\"type\":1300,\"data\":\"hi there\"}],\"uid_map\":{}}\n", w.String())
 	expected := start.Add(time.Second * 2)
 	assert.True(t, expected.Equal(time.Now()) || expected.Before(time.Now()), "Should have taken at least 2 seconds to flush")
 	assert.Equal(t, 0, len(m.msgs))
