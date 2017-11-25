@@ -59,6 +59,10 @@ func main() {
 	if err != nil {
 		logrus.WithError(err).Fatal("failed to create netlink client")
 	}
+	filter, err := createFilters(config)
+	if err != nil {
+		logrus.WithError(err).Fatal("failed to create filters")
+	}
 	marshaller := NewAuditMarshaller(
 		writer,
 		uint16(config.Events.Min),
@@ -66,7 +70,7 @@ func main() {
 		config.MessageTracking.Enabled,
 		config.MessageTracking.LogOutOfOrder,
 		config.MessageTracking.MaxOutOfOrder,
-		createFilters(config),
+		filter,
 	)
 
 	logrus.Infof("started processing events in the range [%d, %d]", config.Events.Min, config.Events.Max)
@@ -315,7 +319,7 @@ func createKafkaOutput(ctx context.Context, config *Config) (*AuditWriter, error
 	return NewAuditWriter(kw, attempts), nil
 }
 
-func createFilters(config *Config) []AuditFilter {
+func createFilters(config *Config) ([]AuditFilter, error) {
 	var (
 		err     error
 		filters []AuditFilter
@@ -332,7 +336,7 @@ func createFilters(config *Config) []AuditFilter {
 		}
 		if f.Regex != "" {
 			if af.regex, err = regexp.Compile(f.Regex); err != nil {
-				logrus.WithError(err).Fatalf("`regex` in filter %d could not be parsed: %s", i+1, f.Regex)
+				return nil, fmt.Errorf("`regex` in filter %d could not be parsed: %s", i+1, f.Regex)
 			}
 		}
 		if f.Syscall != 0 {
@@ -340,15 +344,15 @@ func createFilters(config *Config) []AuditFilter {
 		}
 
 		if af.regex == nil {
-			return filters, fmt.Errorf("Filter %d is missing the `regex` entry", i+1)
+			return nil, fmt.Errorf("Filter %d is missing the `regex` entry", i+1)
 		}
 
 		if af.syscall == "" {
-			return filters, fmt.Errorf("Filter %d is missing the `syscall` entry", i+1)
+			return nil, fmt.Errorf("Filter %d is missing the `syscall` entry", i+1)
 		}
 
 		if af.messageType == 0 {
-			return filters, fmt.Errorf("Filter %d is missing the `message_type` entry", i+1)
+			return nil, fmt.Errorf("Filter %d is missing the `message_type` entry", i+1)
 		}
 
 		filters = append(filters, af)
