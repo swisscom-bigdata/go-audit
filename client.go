@@ -48,7 +48,7 @@ type NetlinkClient struct {
 func NewNetlinkClient(recvSize int) (*NetlinkClient, error) {
 	fd, err := syscall.Socket(syscall.AF_NETLINK, syscall.SOCK_RAW, syscall.NETLINK_AUDIT)
 	if err != nil {
-		return nil, fmt.Errorf("could not create a socket: %v", err)
+		return nil, fmt.Errorf("Could not create a socket: %s", err)
 	}
 
 	n := &NetlinkClient{
@@ -59,7 +59,7 @@ func NewNetlinkClient(recvSize int) (*NetlinkClient, error) {
 
 	if err = syscall.Bind(fd, n.address); err != nil {
 		syscall.Close(fd)
-		return nil, fmt.Errorf("could not bind to netlink socket: %v", err)
+		return nil, fmt.Errorf("Could not bind to netlink socket: %s", err)
 	}
 
 	// Set the buffer size if we were asked

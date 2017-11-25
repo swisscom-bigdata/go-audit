@@ -339,11 +339,23 @@ func createFilters(config *Config) []AuditFilter {
 			af.syscall = strconv.Itoa(f.Syscall)
 		}
 
+		if af.regex == nil {
+			return filters, fmt.Errorf("Filter %d is missing the `regex` entry", i+1)
+		}
+
+		if af.syscall == "" {
+			return filters, fmt.Errorf("Filter %d is missing the `syscall` entry", i+1)
+		}
+
+		if af.messageType == 0 {
+			return filters, fmt.Errorf("Filter %d is missing the `message_type` entry", i+1)
+		}
+
 		filters = append(filters, af)
-		logrus.Infof("ignoring  syscall `%v` containing message type `%v` matching string `%s`", af.syscall, af.messageType, af.regex.String())
+		logrus.Infof("Ignoring  syscall `%v` containing message type `%v` matching string `%s`", af.syscall, af.messageType, af.regex.String())
 	}
 
-	return filters
+	return filters, nil
 }
 
 type executor func(s string, a ...string) error
